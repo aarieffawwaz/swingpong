@@ -187,6 +187,38 @@ struct selfpongTests {
         #expect(engine.ball.position.z == GameEngine.levelOneHoldHeight)
     }
 
+    @Test func levelOneUsesThreeHitsAndResetClearsProgress() {
+        #expect(GameEngine.levelOneTarget == 3)
+        let engine = GameEngine(classifier: StubClassifier(label: "bounce"))
+        let frames = (0..<50).map {
+            MotionFrame(timestamp: Double($0) / 100, features: Array(repeating: 0, count: 9))
+        }
+        engine.start()
+        engine.processCapturedWindow(CapturedMotionWindow(frames: frames, peakMagnitude: 1.2))
+        #expect(engine.score == 1)
+
+        engine.resetToReady()
+        #expect(engine.score == 0)
+        #expect(engine.state == .ready)
+        #expect(!engine.isPaused)
+    }
+
+    @Test func pausingFreezesTheBallUntilResumed() {
+        let engine = GameEngine(classifier: StubClassifier(label: "bounce"))
+        engine.start()
+        let start = Date(timeIntervalSinceReferenceDate: 2_000)
+        engine.tick(at: start)
+        engine.setPaused(true)
+        let frozenPosition = engine.ball.position
+        engine.tick(at: start.addingTimeInterval(2))
+        #expect(engine.ball.position == frozenPosition)
+
+        engine.setPaused(false)
+        engine.tick(at: start.addingTimeInterval(2.1))
+        engine.tick(at: start.addingTimeInterval(2.2))
+        #expect(engine.ball.position != frozenPosition)
+    }
+
 }
 
 private struct StubClassifier: MotionClassifying {

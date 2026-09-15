@@ -8,6 +8,7 @@ final class GameEngine {
     static let hitZoneHeight = 0.95
     static let levelOneHoldHeight = 0.35
     static let contactTriggerThreshold = 0.78
+    static let levelOneTarget = 3
 
     enum State: String {
         case ready = "Ready"
@@ -44,6 +45,9 @@ final class GameEngine {
     private(set) var isInStrikeZone = false
     private(set) var isWaitingForHit = false
     private(set) var flashIntensity = 0.0
+    private(set) var isPaused = false
+    var soundEnabled = true
+    var hapticsEnabled = true
 
     private let motion = CMMotionManager()
     private let classifier: (any MotionClassifying)?
@@ -78,7 +82,7 @@ final class GameEngine {
     }
 
     func prepare() {
-        sounds.prepare()
+        if soundEnabled { sounds.prepare() }
         startMotionIfNeeded()
     }
 
@@ -86,15 +90,15 @@ final class GameEngine {
         guard state == .ready, isPhoneReady else {
             feedbackTone = .warning
             motionMessage = "Place the phone flat, screen facing the ceiling"
-            UINotificationFeedbackGenerator().notificationOccurred(.warning)
+            notify(.warning)
             return
         }
         countdownValue = 3
         countdownEndsAt = date.addingTimeInterval(3)
         state = .countdown
         feedbackTone = .ready
-        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-        sounds.play(.countdown)
+        impact(.light)
+        playSound(.countdown)
     }
 
     func start() {
@@ -116,13 +120,42 @@ final class GameEngine {
         countdownEndsAt = nil
         startMotionIfNeeded()
         recenter()
-        UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
-        sounds.play(.start)
+        impact(.rigid)
+        playSound(.start)
     }
 
     func restart() {
         state = .ready
         requestStart()
+    }
+
+    func resetToReady() {
+        score = 0
+        state = .ready
+        ball = BallState()
+        previousTick = nil
+        windowCollector.reset()
+        predictionLabel = "Waiting"
+        predictionConfidence = 0
+        lastDecision = "Hold flat, wait for HIT, then make a gentle upward pop."
+        feedbackTone = .neutral
+        isInStrikeZone = false
+        isWaitingForHit = false
+        flashIntensity = 0
+        pendingContactWasHittable = nil
+        countdownEndsAt = nil
+        isPaused = false
+        startMotionIfNeeded()
+    }
+
+    func setPaused(_ paused: Bool) {
+        isPaused = paused
+        previousTick = nil
+        if paused {
+            motion.stopDeviceMotionUpdates()
+        } else {
+            startMotionIfNeeded()
+        }
     }
 
     func stop() {
@@ -138,22 +171,26 @@ final class GameEngine {
     }
 
     func tick(at date: Date) {
+        guard !isPaused else {
+            previousTick = date
+            return
+        }
         if state == .countdown {
             guard isPhoneReady else {
                 state = .ready
                 countdownEndsAt = nil
                 feedbackTone = .warning
                 motionMessage = "Phone moved. Hold it flat and still again."
-                UINotificationFeedbackGenerator().notificationOccurred(.warning)
-                sounds.play(.rejected)
+                notify(.warning)
+                playSound(.rejected)
                 return
             }
             guard let countdownEndsAt else { return }
             let nextValue = max(0, Int(ceil(countdownEndsAt.timeIntervalSince(date))))
             if nextValue != countdownValue, nextValue > 0 {
                 countdownValue = nextValue
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                sounds.play(.countdown)
+                impact(.light)
+                playSound(.countdown)
             }
             if nextValue == 0 { start() }
             return
@@ -203,8 +240,8 @@ final class GameEngine {
             state = .gameOver
             feedbackTone = .warning
             flashIntensity = 0.85
-            UINotificationFeedbackGenerator().notificationOccurred(.error)
-            sounds.play(.gameOver)
+            notify(.error)
+            playSound(.gameOver)
         }
     }
 
@@ -219,6 +256,7 @@ final class GameEngine {
     }
 
     func processCapturedWindow(_ window: CapturedMotionWindow) {
+        guard !isPaused else { return }
         guard state == .playing || state == .checkingContact else { return }
         guard let classifier else {
             lastDecision = "Model unavailable — no score added"
@@ -246,7 +284,7 @@ final class GameEngine {
                 }
                 feedbackTone = .rejected
                 flashIntensity = 0.55
-                sounds.play(.rejected)
+                playSound(.rejected)
             }
         } catch {
             lastDecision = "Could not check motion: \(error.localizedDescription)"
@@ -260,8 +298,8 @@ final class GameEngine {
             lastDecision = "Bounce recognized, but the ball was not in the HIT zone"
             feedbackTone = .warning
             flashIntensity = 0.45
-            UINotificationFeedbackGenerator().notificationOccurred(.warning)
-            sounds.play(.rejected)
+            notify(.warning)
+            playSound(.rejected)
             return
         }
         let strength = min(max(1.35 + (peakMagnitude - Self.contactTriggerThreshold) * 0.24,
@@ -280,7 +318,7 @@ final class GameEngine {
         feedbackTone = .success
         flashIntensity = 1
         isInStrikeZone = false
-        sounds.play(.accepted)
+        playSound(.accepted)
     }
 
     func setSimulatedTilt(translationX: Double, translationY: Double) {
@@ -350,8 +388,8 @@ final class GameEngine {
                                        verticalVelocity: ball.velocity.z))
         if isHittable, !isInStrikeZone {
             feedbackTone = .ready
-            contactHaptic.prepare()
-            sounds.play(.hitWindow)
+            if hapticsEnabled { contactHaptic.prepare() }
+            playSound(.hitWindow)
         }
         isInStrikeZone = isHittable
     }
@@ -362,8 +400,8 @@ final class GameEngine {
         flashIntensity = max(flashIntensity, 0.28)
         lastDecision = "Motion heard — checking it now…"
         if isInStrikeZone { state = .checkingContact }
-        contactHaptic.impactOccurred(intensity: 1)
-        sounds.play(.motionDetected)
+        if hapticsEnabled { contactHaptic.impactOccurred(intensity: 1) }
+        playSound(.motionDetected)
     }
 
     private func updateReadiness(with data: CMDeviceMotion) {
@@ -396,8 +434,8 @@ final class GameEngine {
                 isPhoneReady = true
                 feedbackTone = .ready
                 motionMessage = "Phone ready — keep it like this"
-                UINotificationFeedbackGenerator().notificationOccurred(.success)
-                sounds.play(.ready)
+                notify(.success)
+                playSound(.ready)
             }
         } else {
             readinessBeganAt = nil
@@ -409,5 +447,20 @@ final class GameEngine {
                     : "Make the phone flatter and keep it still"
             }
         }
+    }
+
+    private func playSound(_ cue: GameSoundPlayer.Cue) {
+        guard soundEnabled else { return }
+        sounds.play(cue)
+    }
+
+    private func impact(_ style: UIImpactFeedbackGenerator.FeedbackStyle) {
+        guard hapticsEnabled else { return }
+        UIImpactFeedbackGenerator(style: style).impactOccurred()
+    }
+
+    private func notify(_ type: UINotificationFeedbackGenerator.FeedbackType) {
+        guard hapticsEnabled else { return }
+        UINotificationFeedbackGenerator().notificationOccurred(type)
     }
 }
