@@ -1,0 +1,66 @@
+{
+  "source": "/Users/aarief/Documents/Work/6. Apple Developer/CH-06/selfpong_model/dataset/swings.csv",
+  "total_sessions": 262,
+  "frame_count_per_session": 50,
+  "features": [
+    "ua_x",
+    "ua_y",
+    "ua_z",
+    "rr_x",
+    "rr_y",
+    "rr_z",
+    "g_x",
+    "g_y",
+    "g_z"
+  ],
+  "counts": {
+    "Training": {
+      "adjust": 100,
+      "bounce": 100,
+      "idle": 62
+    },
+    "Testing": {
+      "adjust": 0,
+      "bounce": 0,
+      "idle": 0
+    }
+  },
+  "feature_ranges": {
+    "ua_x": {
+      "minimum": -1.488068,
+      "maximum": 2.115701
+    },
+    "ua_y": {
+      "minimum": -2.378969,
+      "maximum": 1.783731
+    },
+    "ua_z": {
+      "minimum": -3.387512,
+      "maximum": 3.239244
+    },
+    "rr_x": {
+      "minimum": -9.048633,
+      "maximum": 10.870885
+    },
+    "rr_y": {
+      "minimum": -13.265208,
+      "maximum": 10.372529
+    },
+    "rr_z": {
+      "minimum": -7.463359,
+      "maximum": 6.849195
+    },
+    "g_x": {
+      "minimum": -0.985925,
+      "maximum": 0.999373
+    },
+    "g_y": {
+      "minimum": -0.998095,
+      "maximum": 0.99665
+    },
+    "g_z": {
+      "minimum": -1.0,
+      "maximum": 0.646908
+    }
+  }
+}

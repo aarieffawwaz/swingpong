@@ -1,0 +1,52 @@
+{
+  "source": "/Users/aarief/Documents/Work/6. Apple Developer/CH-06/selfpong_model/dataset/swings.csv",
+  "frame_count": 50,
+  "sample_rate_hz": 100,
+  "filter": "three-point 0.25/0.50/0.25 smoothing with replicated edges",
+  "validation_rule": "every fifth complete recording within each label",
+  "features": [
+    "ua_x",
+    "ua_y",
+    "ua_z",
+    "rr_x",
+    "rr_y",
+    "rr_z",
+    "g_x",
+    "g_y",
+    "g_z"
+  ],
+  "means": {
+    "ua_x": -0.03099741742857143,
+    "ua_y": 0.1594862457142857,
+    "ua_z": 0.075192646,
+    "rr_x": 0.06505136219047619,
+    "rr_y": -0.05089939761904762,
+    "rr_z": -0.07379777857142857,
+    "g_x": -0.004878928476190475,
+    "g_y": -0.019157250095238096,
+    "g_z": -0.8040747327619048
+  },
+  "standard_deviations": {
+    "ua_x": 0.2550514330216405,
+    "ua_y": 0.2985413281067149,
+    "ua_z": 0.6881272003571862,
+    "rr_x": 2.683847157814246,
+    "rr_y": 1.6689668186538462,
+    "rr_z": 1.4807010992516922,
+    "g_x": 0.37045470176442424,
+    "g_y": 0.3688809319268798,
+    "g_z": 0.2815159780958166
+  },
+  "counts": {
+    "Training": {
+      "bounce": 80,
+      "adjust": 80,
+      "idle": 50
+    },
+    "Validation": {
+      "bounce": 20,
+      "adjust": 20,
+      "idle": 12
+    }
+  }
+}
