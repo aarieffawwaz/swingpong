@@ -1,0 +1,91 @@
+# PRD: SwingPong — Motion-Classified Solo Pingpong
+
+## 1. Overview
+A single-phone iOS game where a ball travels up and down the screen, and the player physically swings the phone like a paddle to hit it back. The type of swing (soft, hard, angled) is classified in real time by an on-device Create ML model, and the classification determines how the ball returns — this is the core mechanic, not a cosmetic add-on.
+
+**Learning goals demonstrated:**
+- Training a motion classification model in Create ML
+- Integrating a trained model via Core ML for real-time inference
+- Applying Gestalt principles (continuity, common fate) to make ball motion and hit feedback feel like one fluid action
+
+## 2. Problem / Challenge Statement
+Refined challenge: Learn how to train and integrate a motion classification model, and use Gestalt principles to make solo gameplay feel responsive and clear.
+
+Challenge response: Build a single-phone pong-style game where the ball moves up and down the screen and the player swings the phone like a paddle to hit it back, using a Create ML–trained motion model (via Core ML) to classify the swing and determine how the ball responds, with Gestalt principles guiding the visual feedback.
+
+## 3. Core Mechanic
+1. Ball spawns at the top of the screen and falls/moves toward the player (bottom of screen).
+2. Player physically swings the phone (a real-world motion, not a tap) at the moment the ball reaches the "hit zone."
+3. CoreMotion captures accelerometer/gyroscope data during the swing window.
+4. The Core ML model classifies the swing as one of: `soft`, `hard`, `angled`.
+5. Ball's return speed, angle, and trajectory are determined by the classified swing type.
+6. Ball travels back up the screen, and the cycle repeats.
+
+## 4. Scope Decisions (confirmed with user)
+- **Single phone only.** No MultipeerConnectivity, no second device.
+- **No wall bounce mechanic.** Ball goes up and down the same axis, not left-right off a wall.
+- **Miss/fail state: TBD by builder.** Two acceptable options, pick one before building:
+  - Option A (simpler): every swing successfully returns the ball; only the *type* of swing varies the return. No lose condition, this is a motion-reactive toy, not a scored game.
+  - Option B (has stakes): if the player doesn't swing within a timing window when the ball reaches the hit zone, it counts as a miss and a score/life system tracks performance.
+  - **Recommendation for a first build: Option A.** It removes timing-precision as a variable while you're still validating the model works at all. Option B can be layered on after the classifier is working reliably.
+
+## 5. Functional Requirements
+
+### 5.1 Motion Classification (Create ML + Core ML)
+- Model type: Motion/Activity Classification (Create ML's built-in activity classifier, trained on CoreMotion-format labeled data).
+- Classes: `soft`, `hard`, `angled` (minimum 3 classes; can expand later).
+- Input: a rolling window of accelerometer + gyroscope samples captured via CoreMotion during a detected swing event.
+- Output: predicted class + confidence score.
+- Model must run fully on-device via Core ML, no network calls.
+
+### 5.2 Swing Detection
+- Before classification can run, the app needs to detect *that a swing happened at all* (a trigger), separate from *classifying what kind* of swing it was.
+- Simplest approach: threshold on acceleration magnitude to detect "a swing is happening," then feed the surrounding motion window into the classifier.
+- This is a rule-based trigger, not ML — that's fine, it's a supporting mechanism, not the core learning objective.
+
+### 5.3 Gameplay Rendering
+- Framework: SpriteKit (recommended for 2D physics-lite motion) or SwiftUI with manual animation, builder's choice.
+- Ball moves along a single vertical axis between a "top zone" and a "hit zone" near the bottom.
+- Return trajectory driven by classified swing type:
+  - `soft` → ball returns slowly, straight up.
+  - `hard` → ball returns fast, straight up.
+  - `angled` → ball returns at a randomized/tilted horizontal drift while still moving vertically.
+
+### 5.4 Visual Feedback (Gestalt Principles)
+- **Continuity:** the ball's path must be rendered as a smooth, continuous curve/line motion — no teleporting or discrete frame jumps between "before hit" and "after hit" states.
+- **Common fate:** any accompanying visual elements (e.g., a trailing particle effect, a screen-edge glow) must move in the same direction and timing as the ball itself, reinforcing that they belong to one event.
+- Optional stretch: a brief on-screen label or icon indicating the classified swing type, appearing and fading in sync with the ball's motion (not as a jarring separate popup).
+
+## 6. Non-Functional Requirements
+- Must run on a physical iPhone (CoreMotion does not function in the simulator for real accelerometer data).
+- On-device inference only — privacy and offline functionality, no server dependency.
+- Target iOS version: iOS 16+ (adjust based on builder's available Xcode/SDK version).
+
+## 7. Out of Scope (explicitly, to prevent scope creep)
+- Multiplayer / two-phone sync
+- Wall-bounce or left-right bounce physics
+- Leaderboards, social features, or persistence beyond the current session
+- Any cloud-based model training or inference
+
+## 8. Tech Stack
+- **Language:** Swift
+- **UI/Rendering:** SwiftUI + SpriteKit (or SwiftUI-only if builder prefers simpler animation)
+- **Motion capture:** CoreMotion (`CMMotionManager`)
+- **Model training:** Create ML (macOS app or Swift Playground)
+- **Model inference:** Core ML (`.mlmodel` embedded in app bundle)
+- **IDE:** Xcode
+
+## 9. Milestones
+1. CoreMotion swing detection working (rule-based trigger) — validate on-device that swings are captured as data.
+2. Labeled swing dataset recorded (soft/hard/angled) — see companion training to-do list.
+3. Model trained in Create ML, exported to `.mlmodel`.
+4. Model integrated into app, live classification confirmed via debug console/on-screen label.
+5. Ball rendering + basic up/down motion built, independent of ML (can be built in parallel with steps 1–4).
+6. Swing classification wired to ball return behavior.
+7. Gestalt-driven visual polish pass (continuity, common fate).
+8. End-to-end playtest and bug fixes.
+
+## 10. Open Questions for Builder to Resolve Before/During Build
+- Option A vs Option B miss/fail state (see Section 4) — pick before wiring up scoring.
+- Exact swing detection threshold — will need on-device tuning, cannot be guessed in advance.
+- Number of training samples per class needed for acceptable accuracy — start with the minimum in the training to-do list and increase if accuracy is poor.
