@@ -55,10 +55,17 @@ struct GameplayView: View {
             VStack(spacing: 4) {
                 Text("\(engine.countdownValue)")
                     .font(.system(size: 104, weight: .black, design: .rounded))
-                    .foregroundStyle(ArcadeTheme.orange).contentTransition(.numericText())
+                    .contentTransition(.numericText())
                 Text("KEEP IT FLAT").font(.system(.headline, design: .rounded, weight: .heavy))
             }
-            .foregroundStyle(ArcadeTheme.navy)
+            .foregroundStyle(.white)
+            .frame(width: 230, height: 180)
+            .background(ArcadeTheme.navy.opacity(0.94), in: RoundedRectangle(cornerRadius: 38))
+            .overlay {
+                RoundedRectangle(cornerRadius: 38)
+                    .stroke(.white.opacity(0.90), lineWidth: 4)
+            }
+            .shadow(color: ArcadeTheme.navy.opacity(0.28), radius: 20, y: 10)
         } else if engine.isInStrikeZone {
             VStack(spacing: 2) {
                 Text("HIT!").font(.system(size: 76, weight: .black, design: .rounded))
@@ -75,7 +82,32 @@ struct GameplayView: View {
                 Text("+1 HIT").font(.system(.headline, design: .rounded, weight: .heavy))
             }
             .foregroundStyle(ArcadeTheme.mint).shadow(color: .white, radius: 8)
+        } else if engine.state == .playing {
+            travelCue
         }
+    }
+
+    private var travelCue: some View {
+        let isRising = engine.ballTravelPhase == .rising
+        return HStack(spacing: 12) {
+            Image(systemName: isRising ? "arrow.up.circle.fill" : "arrow.down.circle.fill")
+                .font(.system(size: 34, weight: .heavy))
+            VStack(alignment: .leading, spacing: 1) {
+                Text(isRising ? "BALL GOING UP" : "BALL COMING DOWN")
+                    .font(.system(.headline, design: .rounded, weight: .heavy))
+                Text(isRising ? "WAIT" : "GET READY")
+                    .font(.system(.caption, design: .rounded, weight: .heavy))
+                    .tracking(1.1)
+            }
+        }
+        .foregroundStyle(isRising ? ArcadeTheme.mint : ArcadeTheme.navy)
+        .padding(.horizontal, 18)
+        .frame(height: 70)
+        .background(.white.opacity(0.90), in: Capsule())
+        .overlay(Capsule().stroke(.white, lineWidth: 2))
+        .shadow(color: ArcadeTheme.navy.opacity(0.10), radius: 12, y: 6)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(isRising ? "Ball going up. Wait." : "Ball coming down. Get ready.")
     }
 
     @ViewBuilder private var bottomCard: some View {
@@ -208,9 +240,20 @@ struct GameplayView: View {
 
         let p = SpatialEngine.project(position: engine.ball.position,
                                       rotation: SpatialEngine.identityRotation(), canvasSize: size)
-        guard engine.state != .ready, p.isVisible else { return }
+        guard engine.state == .playing || engine.state == .checkingContact,
+              p.isVisible else { return }
         let point = CGPoint(x: size.width / 2, y: p.point.y)
         let diameter = max(34, min(p.size, 88))
+
+        let approach = min(max((1.60 - engine.ball.position.z) / 1.25, 0), 1)
+        let shadowWidth = 34 + 82 * approach
+        let shadow = CGRect(x: size.width / 2 - shadowWidth / 2,
+                            y: size.height * 0.725,
+                            width: shadowWidth,
+                            height: 10 + 12 * approach)
+        context.fill(Path(ellipseIn: shadow),
+                     with: .color(ArcadeTheme.navy.opacity(0.05 + 0.13 * approach)))
+
         let glow = CGRect(x: point.x - diameter * 0.72, y: point.y - diameter * 0.72,
                           width: diameter * 1.44, height: diameter * 1.44)
         context.fill(Path(ellipseIn: glow), with: .color(ArcadeTheme.orange.opacity(0.20)))
@@ -222,5 +265,31 @@ struct GameplayView: View {
         let shine = CGRect(x: ball.minX + diameter * 0.19, y: ball.minY + diameter * 0.14,
                            width: diameter * 0.24, height: diameter * 0.16)
         context.fill(Path(ellipseIn: shine), with: .color(.white.opacity(0.78)))
+
+        if !engine.isInStrikeZone {
+            drawDirectionArrow(context: &context, beside: point, ballSize: diameter,
+                               rising: engine.ballTravelPhase == .rising)
+        }
+    }
+
+    private func drawDirectionArrow(
+        context: inout GraphicsContext,
+        beside point: CGPoint,
+        ballSize: CGFloat,
+        rising: Bool
+    ) {
+        let color = rising ? ArcadeTheme.mint : ArcadeTheme.navy
+        let x = point.x + ballSize * 0.82
+        let startY = point.y + (rising ? 24 : -24)
+        let endY = point.y + (rising ? -24 : 24)
+        var arrow = Path()
+        arrow.move(to: CGPoint(x: x, y: startY))
+        arrow.addLine(to: CGPoint(x: x, y: endY))
+        arrow.move(to: CGPoint(x: x, y: endY))
+        arrow.addLine(to: CGPoint(x: x - 8, y: endY + (rising ? 10 : -10)))
+        arrow.move(to: CGPoint(x: x, y: endY))
+        arrow.addLine(to: CGPoint(x: x + 8, y: endY + (rising ? 10 : -10)))
+        context.stroke(arrow, with: .color(color.opacity(0.86)),
+                       style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round))
     }
 }

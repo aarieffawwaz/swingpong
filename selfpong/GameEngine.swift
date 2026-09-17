@@ -26,6 +26,12 @@ final class GameEngine {
         case warning
     }
 
+    enum BallTravelPhase: Equatable {
+        case rising
+        case falling
+        case waitingForHit
+    }
+
     private(set) var state: State = .ready
     let levelNumber = 1
     let levelName = "Straight-Up Practice"
@@ -48,6 +54,10 @@ final class GameEngine {
     private(set) var isPaused = false
     var soundEnabled = true
     var hapticsEnabled = true
+
+    var ballTravelPhase: BallTravelPhase {
+        Self.travelPhase(verticalVelocity: ball.velocity.z, isWaitingForHit: isWaitingForHit)
+    }
 
     private let motion = CMMotionManager()
     private let classifier: (any MotionClassifying)?
@@ -379,6 +389,14 @@ final class GameEngine {
 
     static func ballIsHittable(positionZ: Double, verticalVelocity: Double) -> Bool {
         positionZ > 0 && positionZ <= hitZoneHeight && verticalVelocity < 0
+    }
+
+    static func travelPhase(
+        verticalVelocity: Double,
+        isWaitingForHit: Bool
+    ) -> BallTravelPhase {
+        if isWaitingForHit || abs(verticalVelocity) < 0.03 { return .waitingForHit }
+        return verticalVelocity > 0 ? .rising : .falling
     }
 
     private func updateStrikeZone() {

@@ -158,6 +158,12 @@ struct selfpongTests {
         #expect(!GameEngine.ballIsHittable(positionZ: 0, verticalVelocity: -0.40))
     }
 
+    @Test func ballTravelDirectionIsUnambiguous() {
+        #expect(GameEngine.travelPhase(verticalVelocity: 0.8, isWaitingForHit: false) == .rising)
+        #expect(GameEngine.travelPhase(verticalVelocity: -0.8, isWaitingForHit: false) == .falling)
+        #expect(GameEngine.travelPhase(verticalVelocity: 0, isWaitingForHit: true) == .waitingForHit)
+    }
+
     @Test func beginnerModeLaunchesStraightUp() {
         let engine = GameEngine(classifier: StubClassifier(label: "bounce"))
         engine.start()

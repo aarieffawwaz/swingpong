@@ -287,7 +287,7 @@ stateDiagram-v2
 | Briefing | Three pictures and short instructions | Read Hold Flat, Wait for HIT, Pop Up | Teaches only one action at a time |
 | Ready | Phone-flat progress ring | Hold phone like a tray | Prevents starting in the wrong position |
 | Countdown | 3, 2, 1 | Keep the phone flat | Gives time to prepare |
-| Playing | Falling ball and large HIT prompt | Make a small upward pop only on HIT | Connects the real motion to the virtual contact |
+| Playing | UP/WAIT or DOWN/GET READY cue, direction arrow, depth shadow, and HIT prompt | Wait while it rises; prepare while it falls; pop only on HIT | Makes depth and direction clear even when the ball changes size |
 | Checking | “Got it — checking” | Wait briefly | Core ML needs the remaining post-trigger frames |
 | Accepted | NICE, flash, sound, immediate contact haptic | Continue | Confirms the hit with sight, sound, and touch |
 | Rejected | “Almost — try again” | Repeat gently | No punishment and unlimited retries |
@@ -302,6 +302,8 @@ Level 1 deliberately:
 - allows unlimited retries;
 - hides the old `Behind` indicator;
 - never lets a rejected motion end the rally.
+
+The ball's size is not the only depth clue. While it rises, a mint arrow and **BALL GOING UP — WAIT** appear. While it falls, the arrow reverses and the message becomes **BALL COMING DOWN — GET READY**. A shadow grows near the paddle as the ball approaches. During the countdown the ball is hidden, so the high-contrast white-on-navy numbers cannot be confused with it.
 
 ---
 
